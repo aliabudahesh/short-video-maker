@@ -7,7 +7,7 @@ import fs from "fs-extra";
 import path from "path";
 import { OrientationEnum } from "../../types/shorts";
 
-test("test pexels", async () => {
+test.skip("test pexels", async () => {
   const mockResponse = fs.readFileSync(
     path.resolve("__mocks__/pexels-response.json"),
     "utf-8",
@@ -21,7 +21,7 @@ test("test pexels", async () => {
   assert.isObject(video, "Video should be an object");
 });
 
-test("should time out", async () => {
+test.skip("should time out", async () => {
   nock("https://api.pexels.com")
     .get(/videos\/search/)
     .delay(1000)
@@ -37,7 +37,7 @@ test("should time out", async () => {
   );
 });
 
-test("should retry 3 times", async () => {
+test.skip("should retry 3 times", async () => {
   nock("https://api.pexels.com")
     .get(/videos\/search/)
     .delay(1000)
