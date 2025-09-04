@@ -8,17 +8,14 @@ import { kokoroModelPrecision, whisperModels } from "./types/shorts";
 const defaultLogLevel: pino.Level = "info";
 const defaultPort = 3123;
 const whisperVersion = "1.7.1";
-const defaultWhisperModel: whisperModels = "medium.en"; // possible options: "tiny", "tiny.en", "base", "base.en", "small", "small.en", "medium", "medium.en", "large-v1", "large-v2", "large-v3", "large-v3-turbo"
+const defaultWhisperModel: whisperModels = "medium.en";
 
-// Create the global logger
 const versionNumber = process.env.npm_package_version;
 export const logger = pino({
   level: process.env.LOG_LEVEL || defaultLogLevel,
   timestamp: pino.stdTimeFunctions.isoTime,
   formatters: {
-    level: (label) => {
-      return { level: label };
-    },
+    level: (label) => ({ level: label }),
   },
   base: {
     pid: process.pid,
@@ -37,7 +34,8 @@ export class Config {
   public tempDirPath: string;
   public packageDirPath: string;
   public musicDirPath: string;
-  public pexelsApiKey: string;
+  public tenorApiKey: string;
+  public giphyApiKey: string;
   public logLevel: pino.Level;
   public whisperVerbose: boolean;
   public port: number;
@@ -47,7 +45,6 @@ export class Config {
   public whisperModel: whisperModels = defaultWhisperModel;
   public kokoroModelPrecision: kokoroModelPrecision = "fp32";
 
-  // docker-specific, performance-related settings to prevent memory issues
   public concurrency?: number;
   public videoCacheSizeInBytes: number | null = null;
 
@@ -74,7 +71,8 @@ export class Config {
     this.staticDirPath = path.join(this.packageDirPath, "static");
     this.musicDirPath = path.join(this.staticDirPath, "music");
 
-    this.pexelsApiKey = process.env.PEXELS_API_KEY as string;
+    this.tenorApiKey = process.env.TENOR_API_KEY as string;
+    this.giphyApiKey = process.env.GIPHY_API_KEY as string;
     this.logLevel = (process.env.LOG_LEVEL || defaultLogLevel) as pino.Level;
     this.whisperVerbose = process.env.WHISPER_VERBOSE === "true";
     this.port = process.env.PORT ? parseInt(process.env.PORT) : defaultPort;
@@ -101,9 +99,9 @@ export class Config {
   }
 
   public ensureConfig() {
-    if (!this.pexelsApiKey) {
+    if (!this.tenorApiKey || !this.giphyApiKey) {
       throw new Error(
-        "PEXELS_API_KEY environment variable is missing. Get your free API key: https://www.pexels.com/api/key/ - see how to run the project: https://github.com/gyoridavid/short-video-maker",
+        "TENOR_API_KEY and GIPHY_API_KEY environment variables are missing. Get your free API keys at https://tenor.com/gifapi and https://developers.giphy.com",
       );
     }
   }

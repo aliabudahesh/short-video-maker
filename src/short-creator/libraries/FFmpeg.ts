@@ -1,5 +1,6 @@
 import ffmpeg from "fluent-ffmpeg";
 import { Readable } from "node:stream";
+import { tmpdir } from "node:os";
 import { logger } from "../../logger";
 
 export class FFMpeg {
@@ -11,10 +12,7 @@ export class FFMpeg {
     });
   }
 
-  async saveNormalizedAudio(
-    audio: ArrayBuffer,
-    outputPath: string,
-  ): Promise<string> {
+  async saveNormalizedAudio(audio: ArrayBuffer, outputPath: string): Promise<string> {
     logger.debug("Normalizing audio for Whisper");
     const inputStream = new Readable();
     inputStream.push(Buffer.from(audio));
@@ -88,6 +86,22 @@ export class FFMpeg {
         .on("error", (err) => {
           reject(err);
         });
+    });
+  }
+
+  async concatVideos(videoPaths: string[], outputPath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const cmd = ffmpeg();
+      videoPaths.forEach((p) => cmd.input(p));
+      cmd
+        .on("error", (err) => {
+          logger.error(err, "Error concatenating videos");
+          reject(err);
+        })
+        .on("end", () => {
+          resolve(outputPath);
+        })
+        .mergeToFile(outputPath, tmpdir());
     });
   }
 }

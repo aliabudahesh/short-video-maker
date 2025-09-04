@@ -10,7 +10,7 @@ import { Kokoro } from "./libraries/Kokoro";
 import { Remotion } from "./libraries/Remotion";
 import { Whisper } from "./libraries/Whisper";
 import { FFMpeg } from "./libraries/FFmpeg";
-import { PexelsAPI } from "./libraries/Pexels";
+import { GifAPI } from "./libraries/GifAPI";
 import { Config } from "../config";
 import { logger } from "../logger";
 import { MusicManager } from "./music";
@@ -36,7 +36,7 @@ export class ShortCreator {
     private kokoro: Kokoro,
     private whisper: Whisper,
     private ffmpeg: FFMpeg,
-    private pexelsApi: PexelsAPI,
+    private gifApi: GifAPI,
     private musicManager: MusicManager,
   ) {}
 
@@ -137,42 +137,49 @@ export class ShortCreator {
       const captions = await this.whisper.CreateCaption(tempWavPath);
 
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
-      const video = await this.pexelsApi.findVideo(
+      const videos = await this.gifApi.findVideos(
         scene.searchTerms,
         audioLength,
         excludeVideoIds,
         orientation,
       );
 
-      logger.debug(`Downloading video from ${video.url} to ${tempVideoPath}`);
-
-      await new Promise<void>((resolve, reject) => {
-        const fileStream = fs.createWriteStream(tempVideoPath);
-        https
-          .get(video.url, (response: http.IncomingMessage) => {
-            if (response.statusCode !== 200) {
-              reject(
-                new Error(`Failed to download video: ${response.statusCode}`),
-              );
-              return;
-            }
-
-            response.pipe(fileStream);
-
-            fileStream.on("finish", () => {
-              fileStream.close();
-              logger.debug(`Video downloaded successfully to ${tempVideoPath}`);
-              resolve();
+      const chunkPaths: string[] = [];
+      let chunkIndex = 0;
+      for (const vid of videos) {
+        const chunkName = `${tempId}-${chunkIndex}.mp4`;
+        const chunkPath = path.join(this.config.tempDirPath, chunkName);
+        chunkPaths.push(chunkPath);
+        tempFiles.push(chunkPath);
+        logger.debug(`Downloading video from ${vid.url} to ${chunkPath}`);
+        await new Promise<void>((resolve, reject) => {
+          const fileStream = fs.createWriteStream(chunkPath);
+          https
+            .get(vid.url, (response: http.IncomingMessage) => {
+              if (response.statusCode !== 200) {
+                reject(new Error(`Failed to download video: ${response.statusCode}`));
+                return;
+              }
+              response.pipe(fileStream);
+              fileStream.on("finish", () => {
+                fileStream.close();
+                resolve();
+              });
+            })
+            .on("error", (err: Error) => {
+              fs.unlink(chunkPath, () => {});
+              reject(err);
             });
-          })
-          .on("error", (err: Error) => {
-            fs.unlink(tempVideoPath, () => {}); // Delete the file if download failed
-            logger.error(err, "Error downloading video:");
-            reject(err);
-          });
-      });
+        });
+        excludeVideoIds.push(vid.id);
+        chunkIndex++;
+      }
 
-      excludeVideoIds.push(video.id);
+      if (chunkPaths.length === 1) {
+        fs.renameSync(chunkPaths[0], tempVideoPath);
+      } else {
+        await this.ffmpeg.concatVideos(chunkPaths, tempVideoPath);
+      }
 
       scenes.push({
         captions,
