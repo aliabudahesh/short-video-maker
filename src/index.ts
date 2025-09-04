@@ -6,7 +6,7 @@ import { Kokoro } from "./short-creator/libraries/Kokoro";
 import { Remotion } from "./short-creator/libraries/Remotion";
 import { Whisper } from "./short-creator/libraries/Whisper";
 import { FFMpeg } from "./short-creator/libraries/FFmpeg";
-import { PexelsAPI } from "./short-creator/libraries/Pexels";
+import { GifAPI } from "./short-creator/libraries/GifAPI";
 import { Config } from "./config";
 import { ShortCreator } from "./short-creator/ShortCreator";
 import { logger } from "./logger";
@@ -39,7 +39,7 @@ async function main() {
   const whisper = await Whisper.init(config);
   logger.debug("initializing ffmpeg");
   const ffmpeg = await FFMpeg.init();
-  const pexelsApi = new PexelsAPI(config.pexelsApiKey);
+  const gifApi = new GifAPI(config.tenorApiKey, config.giphyApiKey);
 
   logger.debug("initializing the short creator");
   const shortCreator = new ShortCreator(
@@ -48,7 +48,7 @@ async function main() {
     kokoro,
     whisper,
     ffmpeg,
-    pexelsApi,
+    gifApi,
     musicManager,
   );
 
@@ -63,7 +63,7 @@ async function main() {
       try {
         const audioBuffer = (await kokoro.generate("hi", "af_heart")).audio;
         await ffmpeg.createMp3DataUri(audioBuffer);
-        await pexelsApi.findVideo(["dog"], 2.4);
+        await gifApi.findVideos(["dog"], 2.4);
         const testVideoPath = path.join(config.tempDirPath, "test.mp4");
         await remotion.testRender(testVideoPath);
         fs.rmSync(testVideoPath, { force: true });
