@@ -1,5 +1,6 @@
 import ffmpeg from "fluent-ffmpeg";
 import { Readable } from "node:stream";
+import { tmpdir } from "node:os";
 import { logger } from "../../logger";
 
 export class FFMpeg {
@@ -100,7 +101,7 @@ export class FFMpeg {
         .on("end", () => {
           resolve(outputPath);
         })
-        .mergeToFile(outputPath);
+        .mergeToFile(outputPath, tmpdir());
     });
   }
 }
